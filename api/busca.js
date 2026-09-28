@@ -17,7 +17,7 @@ module.exports = async (req, res) => {
     // ==========================================
     // MÓDULO 1: MERCADO LIVRE (API OFICIAL)
     // ==========================================
-    try {
+       try {
       const resML = await fetch(`https://mercadolibre.com{encodeURIComponent(q)}&limit=3`);
       const dadosML = await resML.json();
       if (dadosML.results && dadosML.results.length > 0) {

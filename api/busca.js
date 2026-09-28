@@ -1,23 +1,25 @@
-// Central Modular de Buscas - Preparada para 10+ Lojas
 module.exports = async (req, res) => {
-  // Configuração para permitir que o Blogger acesse o servidor
+  // Permite que qualquer site (incluindo o seu Blogger) consulte esta API
+  res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
+  res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version');
 
-  if (req.method === 'OPTIONS') return res.status(200).end();
+  // Responde imediatamente a requisições de teste de segurança do navegador (Preflight)
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
 
-  const { q } = req.query; // Captura o termo digitado no Blogger
+  const { q } = req.query;
   if (!q) return res.status(400).json({ error: 'Nenhum produto digitado.' });
 
   try {
-    // Lista onde todas as lojas vão jogar seus resultados
     let todosOsProdutos = [];
 
     // ==========================================
     // MÓDULO 1: MERCADO LIVRE (API OFICIAL)
     // ==========================================
-          try {
+    try {
       const resML = await fetch(`https://mercadolibre.com{encodeURIComponent(q)}&limit=3`);
       const dadosML = await resML.json();
       if (dadosML.results && dadosML.results.length > 0) {
@@ -30,7 +32,9 @@ module.exports = async (req, res) => {
           });
         });
       }
-    } catch (e) { console.error("Erro Mercado Livre:", e); }
+    } catch (e) { 
+      console.error("Erro Mercado Livre:", e); 
+    }
 
     // ==========================================
     // MÓDULO 2: AMAZON (LINK DIRETO DE AFILIADO)
@@ -38,7 +42,7 @@ module.exports = async (req, res) => {
     todosOsProdutos.push({
       loja: 'Amazon',
       titulo: `Buscar "${q}" na Amazon`,
-      preco: null, // Deixamos sem preço fixo por enquanto para não gerar erro
+      preco: null,
       link: `https://amazon.com.br{encodeURIComponent(q)}&tag=ondetamaisb02-20`
     });
 
@@ -52,17 +56,13 @@ module.exports = async (req, res) => {
       link: `https://magazinevoce.com.br{encodeURIComponent(q)}/`
     });
 
-    // ESPAÇO RESERVADO: Aqui dentro adicionaremos as próximas 7+ lojas 
-    // (Shopee, AliExpress, Casas Bahia, Kabum, etc.) sem quebrar o site atual.
-
-    // ORDENAÇÃO INTELIGENTE: Organiza do menor para o maior preço
+    // Ordenação automática: menor preço primeiro
     todosOsProdutos.sort((a, b) => {
       if (a.preco === null) return 1;
       if (b.preco === null) return -1;
       return a.preco - b.preco;
     });
 
-    // Envia a lista organizada de volta para o Blogger
     return res.status(200).json(todosOsProdutos);
 
   } catch (error) {

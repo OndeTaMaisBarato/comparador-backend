@@ -14,8 +14,8 @@ module.exports = async (req, res) => {
   try {
     let todosOsProdutos = [];
 
-    // ==========================================
-    // MÓDULO 1: MERCADO LIVRE (LINK DE BUSCA SEGURO)
+          // ==========================================
+    // MÓDULO 1: MERCADO LIVRE (CORRIGIDO)
     // ==========================================
     todosOsProdutos.push({
       loja: 'Mercado Livre',

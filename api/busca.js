@@ -4,45 +4,38 @@ module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
   res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version');
 
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
+  if (req.method === 'OPTIONS') return res.status(200).end();
 
   const { q } = req.query;
   if (!q) return res.status(400).json({ error: 'Nenhum produto digitado.' });
 
   try {
     let todosOsProdutos = [];
-    const termoProd = encodeURIComponent(q);
+    
+    // Links construídos com aspas simples tradicionais e sem caracteres especiais complexos
+    const linkMercadoLivre = 'https://mercadolivre.com.br' + encodeURIComponent(q);
+    const linkAmazon = 'https://amazon.com.br' + encodeURIComponent(q) + '&tag=ondetamaisb02-20';
+    const linkMagalu = 'https://magazinevoce.com.br' + encodeURIComponent(q) + '/';
 
-    // ==========================================
-    // MÓDULO 1: MERCADO LIVRE (BLINDADO)
-    // ==========================================
     todosOsProdutos.push({
       loja: 'Mercado Livre',
-      titulo: `Buscar "${q}" no Mercado Livre`,
+      titulo: 'Ver ofertas de ' + q + ' no Mercado Livre',
       preco: null,
-      link: `https://mercadolivre.com.br{termoProd}`
+      link: linkMercadoLivre
     });
 
-    // ==========================================
-    // MÓDULO 2: AMAZON (BLINDADO)
-    // ==========================================
     todosOsProdutos.push({
       loja: 'Amazon',
-      titulo: `Buscar "${q}" na Amazon`,
+      titulo: 'Ver ofertas de ' + q + ' na Amazon',
       preco: null,
-      link: `https://amazon.com.br{termoProd}&tag=ondetamaisb02-20`
+      link: linkAmazon
     });
 
-    // ==========================================
-    // MÓDULO 3: MAGAZINE LUIZA (BLINDADO)
-    // ==========================================
     todosOsProdutos.push({
       loja: 'Magazine Luiza',
-      titulo: `Buscar "${q}" no Magalu`,
+      titulo: 'Ver ofertas de ' + q + ' no Magalu',
       preco: null,
-      link: `https://magazinevoce.com.br{termoProd}/`
+      link: linkMagalu
     });
 
     return res.status(200).json(todosOsProdutos);

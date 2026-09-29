@@ -16,7 +16,7 @@ module.exports = async (req, res) => {
     const termoProd = encodeURIComponent(q);
 
     // ==========================================
-    // MÓDULO 1: MERCADO LIVRE
+    // MÓDULO 1: MERCADO LIVRE (BLINDADO)
     // ==========================================
     todosOsProdutos.push({
       loja: 'Mercado Livre',
@@ -26,7 +26,7 @@ module.exports = async (req, res) => {
     });
 
     // ==========================================
-    // MÓDULO 2: AMAZON
+    // MÓDULO 2: AMAZON (BLINDADO)
     // ==========================================
     todosOsProdutos.push({
       loja: 'Amazon',
@@ -36,7 +36,7 @@ module.exports = async (req, res) => {
     });
 
     // ==========================================
-    // MÓDULO 3: MAGAZINE LUIZA
+    // MÓDULO 3: MAGAZINE LUIZA (BLINDADO)
     // ==========================================
     todosOsProdutos.push({
       loja: 'Magazine Luiza',

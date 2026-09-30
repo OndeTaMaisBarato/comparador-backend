@@ -15,6 +15,18 @@ module.exports = (req, res) => {
   res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=600');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
+  if (req.query && req.query.destaques) {
+    // Sorteio fixo por dia: a vitrine muda diariamente, mas é igual para todos no mesmo dia
+    let seed = Math.floor(Date.now() / 86400000);
+    const rnd = () => ((seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648);
+    const pool = produtos.filter((x) => x.imagem && x.preco >= 30);
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(rnd() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+    return res.status(200).json({ destaques: pool.slice(0, 12), totalCatalogo: produtos.length });
+  }
+
   const q = String((req.query && req.query.q) || '').trim().slice(0, 100);
   if (!q) return res.status(400).json({ erro: 'Digite um produto para pesquisar.' });
 

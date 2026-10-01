@@ -1,4 +1,5 @@
 const produtos = require('../data/produtos.json');
+const { buscarML } = require('../lib/ml.js');
 
 const AMAZON_TAG = process.env.AMAZON_TAG || 'ondetamaisb02-20';
 const MAGALU_SLUG = process.env.MAGALU_SLUG || 'magazineondetamaisbarato';
@@ -8,7 +9,7 @@ const semAcento = (s) =>
 
 const indice = produtos.map((p) => ({ p, texto: semAcento([p.nome, p.marca, p.categoria].join(' ')) }));
 
-module.exports = (req, res) => {
+module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -38,10 +39,25 @@ module.exports = (req, res) => {
     aproximado = achados.length > 0;
   }
 
-  const lista = achados
-    .map((i) => i.p)
-    .sort((a, b) => a.preco - b.preco)
-    .slice(0, 48);
+  let juntos = achados.map((i) => i.p);
+
+  // Mercado Livre entra na lista quando ML_ATIVO=sim (ou ?ml=1 para testar)
+  const usarML = process.env.ML_ATIVO === 'sim' || (req.query && req.query.ml === '1');
+  let mlStatus = 'desligado';
+  if (usarML) {
+    try {
+      const doML = await Promise.race([
+        buscarML(q, termos),
+        new Promise((resolve) => setTimeout(() => resolve(null), 7000)),
+      ]);
+      if (doML) { juntos = juntos.concat(doML); mlStatus = 'ok:' + doML.length; }
+      else mlStatus = 'demorou';
+    } catch (e) {
+      mlStatus = 'erro';
+    }
+  }
+
+  const lista = juntos.sort((a, b) => a.preco - b.preco).slice(0, 48);
 
   const lojas = [
     {
@@ -58,5 +74,5 @@ module.exports = (req, res) => {
     },
   ];
 
-  return res.status(200).json({ busca: q, total: lista.length, aproximado, produtos: lista, lojas });
+  return res.status(200).json({ busca: q, total: lista.length, aproximado, ml: mlStatus, produtos: lista, lojas });
 };

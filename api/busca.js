@@ -62,7 +62,10 @@ module.exports = async (req, res) => {
   const lojas = [
     {
       loja: 'Mercado Livre',
-      link: 'https://lista.mercadolivre.com.br/' + termos.map(encodeURIComponent).join('-'),
+      link:
+        'https://lista.mercadolivre.com.br/' +
+        termos.map(encodeURIComponent).join('-') +
+        (process.env.ML_AFFILIATE_PARAMS ? '?' + process.env.ML_AFFILIATE_PARAMS.replace(/^[?&]/, '') : ''),
     },
     {
       loja: 'Amazon',

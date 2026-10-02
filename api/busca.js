@@ -44,10 +44,11 @@ module.exports = async (req, res) => {
   // Mercado Livre entra na lista quando ML_ATIVO=sim (ou ?ml=1 para testar)
   const usarML = process.env.ML_ATIVO === 'sim' || (req.query && req.query.ml === '1');
   let mlStatus = 'desligado';
+  const mlInfo = req.query && req.query.debug === '1' ? {} : null;
   if (usarML) {
     try {
       const doML = await Promise.race([
-        buscarML(q, termos),
+        buscarML(q, termos, mlInfo),
         new Promise((resolve) => setTimeout(() => resolve(null), 7000)),
       ]);
       if (doML) { juntos = juntos.concat(doML); mlStatus = 'ok:' + doML.length; }
@@ -77,5 +78,5 @@ module.exports = async (req, res) => {
     },
   ];
 
-  return res.status(200).json({ busca: q, total: lista.length, aproximado, ml: mlStatus, produtos: lista, lojas });
+  return res.status(200).json({ busca: q, total: lista.length, aproximado, ml: mlStatus, ml_debug: mlInfo || undefined, produtos: lista, lojas });
 };

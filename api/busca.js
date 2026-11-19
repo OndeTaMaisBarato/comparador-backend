@@ -1,5 +1,5 @@
 const produtos = require('../data/produtos.json');
-const { buscarML } = require('../lib/ml.js');
+const { buscarML, vitrineML } = require('../lib/ml.js');
 
 const AMAZON_TAG = process.env.AMAZON_TAG || 'ondetamaisb02-20';
 const MAGALU_SLUG = process.env.MAGALU_SLUG || 'magazineondetamaisbarato';
@@ -21,16 +21,45 @@ module.exports = async (req, res) => {
   res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=600');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
+  const usarML = process.env.ML_ATIVO === 'sim' || (req.query && req.query.ml === '1');
+  const infoDebug = req.query && req.query.debug === '1' ? {} : null;
+
   if (req.query && req.query.destaques) {
     // Sorteio fixo por dia: a vitrine muda diariamente, mas é igual para todos no mesmo dia
     let seed = Math.floor(Date.now() / 86400000);
     const rnd = () => ((seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648);
-    const pool = produtos.filter((x) => x.imagem && x.preco >= 30 && !eAcessorio(x));
-    for (let i = pool.length - 1; i > 0; i--) {
-      const j = Math.floor(rnd() * (i + 1));
-      [pool[i], pool[j]] = [pool[j], pool[i]];
+    const embaralhar = (arr) => {
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(rnd() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    };
+    // um grupo por loja, para a vitrine ter variedade
+    const porLoja = {};
+    produtos
+      .filter((x) => x.imagem && x.preco >= 30 && !eAcessorio(x))
+      .forEach((x) => { (porLoja[x.loja] = porLoja[x.loja] || []).push(x); });
+    const grupos = Object.keys(porLoja).map((k) => embaralhar(porLoja[k]));
+    let mlStatus = 'desligado';
+    if (usarML) {
+      try {
+        const doML = await Promise.race([
+          vitrineML(infoDebug),
+          new Promise((resolve) => setTimeout(() => resolve(null), 6000)),
+        ]);
+        if (doML && doML.length) { grupos.push(embaralhar(doML.slice())); mlStatus = 'ok:' + doML.length; }
+        else mlStatus = doML ? 'vazio' : 'demorou';
+      } catch (e) {
+        mlStatus = 'erro';
+      }
     }
-    return res.status(200).json({ destaques: pool.slice(0, 12), totalCatalogo: produtos.length });
+    // intercala as lojas: 1 de cada, em rodadas, até completar 12
+    const vitrine = [];
+    for (let i = 0; vitrine.length < 12 && grupos.some((g) => g[i]); i++) {
+      grupos.forEach((g) => { if (g[i] && vitrine.length < 12) vitrine.push(g[i]); });
+    }
+    return res.status(200).json({ destaques: vitrine, ml: mlStatus, ml_debug: infoDebug || undefined, totalCatalogo: produtos.length });
   }
 
   const q = String((req.query && req.query.q) || '').trim().slice(0, 100);
@@ -52,9 +81,8 @@ module.exports = async (req, res) => {
   juntos = filtrar(juntos);
 
   // Mercado Livre entra na lista quando ML_ATIVO=sim (ou ?ml=1 para testar)
-  const usarML = process.env.ML_ATIVO === 'sim' || (req.query && req.query.ml === '1');
   let mlStatus = 'desligado';
-  const mlInfo = req.query && req.query.debug === '1' ? {} : null;
+  const mlInfo = infoDebug;
   if (usarML) {
     try {
       const doML = await Promise.race([
@@ -68,7 +96,14 @@ module.exports = async (req, res) => {
     }
   }
 
-  const lista = juntos.sort((a, b) => a.preco - b.preco).slice(0, 48);
+  // Cada loja entra com até 20 produtos (os mais baratos dela), para uma loja não esconder as outras
+  const porLojaBusca = {};
+  juntos.forEach((x) => { (porLojaBusca[x.loja] = porLojaBusca[x.loja] || []).push(x); });
+  let selecionados = [];
+  Object.keys(porLojaBusca).forEach((k) => {
+    selecionados = selecionados.concat(porLojaBusca[k].sort((a, b) => a.preco - b.preco).slice(0, 20));
+  });
+  const lista = selecionados.sort((a, b) => a.preco - b.preco).slice(0, 60);
 
   const lojas = [
     {
